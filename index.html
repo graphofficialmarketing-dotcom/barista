@@ -188,6 +188,7 @@ td.r,th.r{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}
           <div class="verdict" id="verdict"></div>
           <p id="summary" style="margin:0;color:var(--mute)"></p>
           <p class="saved" id="saved"></p>
+          <p class="saved" id="saved2"></p>
         </div>
       </div>
       <h3 style="margin:26px 0 8px;font-size:19px">คะแนนรายหมวด</h3>
@@ -229,6 +230,9 @@ td.r,th.r{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}
 
 <script>
 {
+// ===== ตั้งค่า: วาง URL ของ Google Apps Script Web app (ลงท้ายด้วย /exec) ไว้ในเครื่องหมายคำพูดด้านล่าง =====
+const SHEET_URL = "";
+// ===================================================================================================
 const CATS=["ประวัติและแหล่งกำเนิดกาแฟ","สายพันธุ์และกระบวนการแปรรูป","ระดับการคั่วและรสชาติ","เมนูกาแฟทั่วโลก","Espresso และ Brewing พื้นฐาน","Coffee Sensory และการบริการ"];
 const CDESC=["ตำนาน เส้นทาง และยุคของกาแฟ","Arabica, Robusta, Process","Light ถึง Dark, Acidity, Body","ชื่อเมนูและส่วนประกอบ","Dose, Yield, Grind, Pour over","กลิ่นรสและการแนะนำลูกค้า"];
 const Q=[
@@ -380,7 +384,7 @@ $("submit").onclick=ask;
 $("dNo").onclick=()=>$("dlg").classList.remove("show");
 $("dYes").onclick=()=>finish(false);
 $("copy").onclick=async()=>{try{await navigator.clipboard.writeText(S.txt);$("copy").textContent="คัดลอกแล้ว ✓"}catch(e){$("copy").textContent="คัดลอกไม่ได้"}};
-$("again").onclick=()=>{clear();svd("");$("result").classList.add("hide");$("start").classList.remove("hide");$("resume").classList.add("hide");$("clock").textContent="45:00";$("crema").setAttribute("stroke-dashoffset","0");window.scrollTo({top:0})};
+$("again").onclick=()=>{clear();svd("");$("saved2").textContent="";$("result").classList.add("hide");$("start").classList.remove("hide");$("resume").classList.add("hide");$("clock").textContent="45:00";$("crema").setAttribute("stroke-dashoffset","0");window.scrollTo({top:0})};
 document.querySelector(".filters").onclick=e=>{const b=e.target.closest(".btn"); if(b) setFilter(b.dataset.f)};
 document.addEventListener("keydown",e=>{
   if($("dlg").classList.contains("show")){if(e.key==="Escape")$("dlg").classList.remove("show");return}
@@ -395,8 +399,21 @@ let db=null,user=null,uid=null,isAdmin=false,mine=[],docs=[],view="exam";
 const fmtD=t=>{try{return new Date(t).toLocaleString("th-TH",{dateStyle:"medium",timeStyle:"short"})}catch(e){return ""}};
 const num=v=>Number.isFinite(+v)?+v:0;
 const svd=t=>{$("saved").textContent=t};
+async function sendSheet(rec){
+  const el=$("saved2");
+  if(!SHEET_URL){el.textContent="";return}
+  el.textContent="กำลังส่งคะแนนไป Google Sheet…";
+  for(let t=0;t<2;t++){
+    try{
+      await fetch(SHEET_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(rec)});
+      el.textContent="ส่งคะแนนไป Google Sheet แล้ว ✓"; return;
+    }catch(e){ if(t===0) await new Promise(r=>setTimeout(r,1500)); }
+  }
+  el.textContent="ส่งคะแนนไป Google Sheet ไม่สำเร็จ (ตรวจอินเทอร์เน็ต) — กด “คัดลอกผลสอบ” ส่งหัวหน้าแทน";
+}
 async function saveResult(rec){
-  if(!db||!uid){svd("ผลนี้ยังไม่ได้บันทึกเข้าระบบ (เปิดหน้านี้จากลิงก์ที่หัวหน้าแชร์ และเข้าสู่ระบบก่อน คะแนนจึงจะไปที่ Dashboard)");return}
+  sendSheet(rec);
+  if(!db||!uid){svd(SHEET_URL?"":"ผลนี้ยังไม่ได้บันทึกเข้าระบบ (เปิดหน้านี้จากลิงก์ที่หัวหน้าแชร์ และเข้าสู่ระบบก่อน คะแนนจึงจะไปที่ Dashboard)");return}
   svd("กำลังบันทึกคะแนน…");
   const ref=db.doc("results/"+uid);
   for(let t=0;t<2;t++){
